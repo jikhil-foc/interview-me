@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -14,10 +14,147 @@ interface QuestionResponse {
   questions: Question[];
 }
 
+type Difficulty = "easy" | "medium" | "hard";
+
+const QUIZ_TIME_SECONDS = 120; // 2 minutes
+
+const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+const Timer = ({
+  seconds,
+  isWarning,
+}: {
+  seconds: number;
+  isWarning: boolean;
+}) => {
+  return (
+    <div
+      className={`fixed top-4 right-4 flex items-center ${
+        isWarning ? "text-red-600" : "text-gray-700"
+      } bg-white rounded-lg shadow-lg px-4 py-2 border ${
+        isWarning ? "border-red-200" : "border-gray-200"
+      }`}
+    >
+      <svg
+        className="w-5 h-5 mr-2"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+      <span
+        className={`font-mono text-xl font-medium ${
+          isWarning ? "animate-pulse" : ""
+        }`}
+      >
+        {formatTime(seconds)}
+      </span>
+    </div>
+  );
+};
+
+const LoadingSkeleton = () => {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="p-8">
+            {/* Header Skeleton */}
+            <div className="text-center mb-8">
+              <div className="animate-pulse">
+                <div className="h-8 w-2/3 bg-gray-200 rounded-lg mx-auto mb-3"></div>
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                  <div className="h-4 w-4 bg-gray-200 rounded-full"></div>
+                  <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Question Skeleton */}
+            <div className="mb-8">
+              <div className="animate-pulse">
+                <div className="h-6 w-3/4 bg-gray-200 rounded-lg mb-6"></div>
+                <div className="space-y-4">
+                  {[...Array(4)].map((_, index) => (
+                    <div
+                      key={index}
+                      className="relative rounded-lg border border-gray-200 p-4"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="h-5 w-5 rounded-full bg-gray-200"></div>
+                        <div className="flex-1">
+                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation Skeleton */}
+            <div className="flex items-center justify-between mt-8">
+              <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+
+          {/* Footer Skeleton */}
+          <div className="bg-gray-50 px-8 py-4 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 w-32 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Loading Indicator */}
+        <div className="mt-8 text-center">
+          <div className="inline-flex items-center px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600">
+            <svg
+              className="animate-spin -ml-1 mr-3 h-5 w-5"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <span>Loading your quiz...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function QuestionsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const topic = searchParams.get("topic");
+  const difficulty = (searchParams.get("difficulty") || "easy") as Difficulty;
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
@@ -25,6 +162,8 @@ export default function QuestionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [allAnswered, setAllAnswered] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(QUIZ_TIME_SECONDS);
+  const shouldAutoSubmit = useRef(false);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -36,7 +175,7 @@ export default function QuestionsPage() {
           },
           body: JSON.stringify({
             topic,
-            difficulty: "medium",
+            difficulty,
             count: 5,
           }),
         });
@@ -58,7 +197,37 @@ export default function QuestionsPage() {
     if (topic) {
       fetchQuestions();
     }
-  }, [topic]);
+  }, [topic, difficulty]);
+
+  useEffect(() => {
+    // Timer countdown effect
+    if (loading || error) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          shouldAutoSubmit.current = true;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [loading, error]);
+
+  // Handle auto-submit in a separate effect
+  useEffect(() => {
+    if (shouldAutoSubmit.current && timeRemaining === 0) {
+      const score = calculateScore();
+      router.push(
+        `/result?score=${score}&topic=${encodeURIComponent(
+          topic || ""
+        )}&timeExpired=true`
+      );
+    }
+  }, [timeRemaining, topic]);
 
   useEffect(() => {
     // Check if all questions have been answered
@@ -89,10 +258,11 @@ export default function QuestionsPage() {
   };
 
   const handleSubmit = () => {
-    if (!allAnswered) return;
     const score = calculateScore();
     router.push(
-      `/result?score=${score}&topic=${encodeURIComponent(topic || "")}`
+      `/result?score=${score}&topic=${encodeURIComponent(
+        topic || ""
+      )}&timeExpired=false`
     );
   };
 
@@ -112,7 +282,22 @@ export default function QuestionsPage() {
       <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center">
           <div className="bg-white rounded-xl shadow-sm p-8">
-            <h1 className="text-red-600 text-xl font-medium mb-4">
+            <div className="inline-flex items-center justify-center p-4 rounded-full bg-red-50 text-red-500 mb-4">
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-xl font-medium text-gray-900 mb-4">
               No topic specified
             </h1>
             <Link
@@ -128,22 +313,7 @@ export default function QuestionsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="bg-white rounded-xl shadow-sm p-8">
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-8"></div>
-              <div className="space-y-4">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-6 bg-gray-200 rounded w-full"></div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSkeleton />;
   }
 
   if (error) {
@@ -151,7 +321,22 @@ export default function QuestionsPage() {
       <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center">
           <div className="bg-white rounded-xl shadow-sm p-8">
-            <h2 className="text-red-600 text-xl font-medium mb-4">{error}</h2>
+            <div className="inline-flex items-center justify-center p-4 rounded-full bg-red-50 text-red-500 mb-4">
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-medium text-red-600 mb-4">{error}</h2>
             <Link
               href="/"
               className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
@@ -166,6 +351,8 @@ export default function QuestionsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+      <Timer seconds={timeRemaining} isWarning={timeRemaining <= 30} />
+
       <div className="max-w-3xl mx-auto">
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="p-8">
@@ -185,6 +372,8 @@ export default function QuestionsPage() {
                         questions.length
                       } answered`}
                 </span>
+                <span>•</span>
+                <span className="capitalize">Difficulty: {difficulty}</span>
               </div>
             </div>
 

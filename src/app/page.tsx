@@ -3,14 +3,73 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type Difficulty = "easy" | "medium" | "hard";
+
+interface DifficultyOption {
+  value: Difficulty;
+  label: string;
+  description: string;
+  icon: string;
+  color: {
+    bg: string;
+    text: string;
+    border: string;
+    hover: string;
+  };
+}
+
+const difficultyOptions: DifficultyOption[] = [
+  {
+    value: "easy",
+    label: "Easy",
+    description: "Basic concepts and fundamentals",
+    icon: "🌱",
+    color: {
+      bg: "bg-green-50",
+      text: "text-green-700",
+      border: "border-green-200",
+      hover: "hover:border-green-300",
+    },
+  },
+  {
+    value: "medium",
+    label: "Medium",
+    description: "Intermediate knowledge and applications",
+    icon: "⭐",
+    color: {
+      bg: "bg-blue-50",
+      text: "text-blue-700",
+      border: "border-blue-200",
+      hover: "hover:border-blue-300",
+    },
+  },
+  {
+    value: "hard",
+    label: "Hard",
+    description: "Advanced concepts and edge cases",
+    icon: "🔥",
+    color: {
+      bg: "bg-red-50",
+      text: "text-red-700",
+      border: "border-red-200",
+      hover: "hover:border-red-300",
+    },
+  },
+];
+
 export default function Home() {
   const [topic, setTopic] = useState("");
+  const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (topic.trim()) {
-      router.push(`/questions?topic=${encodeURIComponent(topic.trim())}`);
+      router.push(
+        `/questions?topic=${encodeURIComponent(
+          topic.trim()
+        )}&difficulty=${difficulty}`
+      );
     }
   };
 
@@ -39,7 +98,7 @@ export default function Home() {
           </p>
 
           <div className="max-w-xl mx-auto bg-white rounded-xl shadow-md p-6 sm:p-8 mb-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-8">
               <div>
                 <label
                   htmlFor="topic"
@@ -58,6 +117,66 @@ export default function Home() {
                     className="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-400 text-lg"
                     placeholder="e.g., React.js, JavaScript"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 text-left mb-3">
+                  Select Difficulty Level
+                </label>
+                <div className="grid gap-4">
+                  {difficultyOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setDifficulty(option.value)}
+                      className={`
+                        relative flex items-center p-4 rounded-lg border-2 transition-all duration-200
+                        ${
+                          difficulty === option.value
+                            ? `${option.color.bg} ${option.color.text} border-current ring-2 ring-current ring-offset-2`
+                            : `border-gray-200 ${option.color.hover}`
+                        }
+                      `}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center">
+                          <span className="text-2xl mr-3">{option.icon}</span>
+                          <div className="text-left">
+                            <p
+                              className={`font-medium ${
+                                difficulty === option.value
+                                  ? "text-current"
+                                  : "text-gray-900"
+                              }`}
+                            >
+                              {option.label}
+                            </p>
+                            <p
+                              className={`text-sm ${
+                                difficulty === option.value
+                                  ? "text-current"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              {option.description}
+                            </p>
+                          </div>
+                        </div>
+                        <div
+                          className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ml-4 ${
+                            difficulty === option.value
+                              ? "border-current bg-current"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {difficulty === option.value && (
+                            <div className="h-2 w-2 rounded-full bg-white"></div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
 
