@@ -32,9 +32,15 @@ export default function Certificate({
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       const pdf = new jsPDF("l", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const x = (pdfWidth - imgWidth) / 2;
+      const y = (pdfHeight - imgHeight) / 2;
+
       const imgData = canvas.toDataURL("image/png");
 
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      pdf.addImage(imgData, "PNG", x, y, imgWidth, imgHeight);
       pdf.save(`${userName}-${topic}-Certificate.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
