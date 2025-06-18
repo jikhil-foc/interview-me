@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import Image from "next/image";
 
 interface CertificateProps {
   userName: string;
@@ -113,9 +114,11 @@ export default function Certificate({
               marginBottom: "1.5rem",
             }}
           >
-            <img
+            <Image
               src="/certificate-logo.svg"
               alt="Certificate Logo"
+              width={32}
+              height={32}
               style={{ height: "2rem" }}
             />
           </div>
@@ -154,9 +157,11 @@ export default function Certificate({
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ marginBottom: "0.5rem" }}>
-              <img
+              <Image
                 src="/signature.svg"
                 alt="Digital Signature"
+                width={48}
+                height={48}
                 style={{ height: "3rem", display: "inline-block" }}
               />
             </div>

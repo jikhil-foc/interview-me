@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -165,13 +165,16 @@ function Quiz() {
   const [timeRemaining, setTimeRemaining] = useState(QUIZ_TIME_SECONDS);
   const shouldAutoSubmit = useRef(false);
 
-  const calculateScore = () => {
+  const calculateScore = useCallback(() => {
+    if (questions.length === 0) {
+      return 0;
+    }
     const correctAnswers = questions.reduce((count, question, index) => {
       return count + (selectedAnswers[index] === question.answer ? 1 : 0);
     }, 0);
     const percentage = Math.round((correctAnswers / questions.length) * 100);
     return percentage;
-  };
+  }, [questions, selectedAnswers]);
 
   useEffect(() => {
     const fetchQuestions = async () => {

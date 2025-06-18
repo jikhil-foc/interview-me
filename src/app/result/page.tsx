@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Certificate from "@/components/Certificate";
 import Modal from "@/components/Modal";
@@ -12,7 +12,7 @@ const ReactConfetti = dynamic(() => import("react-confetti"), {
   ssr: false,
 });
 
-export default function ResultPage() {
+function Result() {
   const searchParams = useSearchParams();
   const score = parseInt(searchParams.get("score") || "0", 10);
   const topic = searchParams.get("topic") || "";
@@ -236,5 +236,13 @@ export default function ResultPage() {
         />
       </Modal>
     </div>
+  );
+}
+
+export default function ResultPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Result />
+    </Suspense>
   );
 }
