@@ -4,6 +4,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import Certificate from "@/components/Certificate";
+import Modal from "@/components/Modal";
 
 // Dynamically import ReactConfetti to avoid SSR issues
 const ReactConfetti = dynamic(() => import("react-confetti"), {
@@ -13,7 +15,10 @@ const ReactConfetti = dynamic(() => import("react-confetti"), {
 export default function ResultPage() {
   const searchParams = useSearchParams();
   const score = parseInt(searchParams.get("score") || "0", 10);
-  const topic = searchParams.get("topic");
+  const topic = searchParams.get("topic") || "";
+  const timeExpired = searchParams.get("timeExpired") === "true";
+  const [userName, setUserName] = useState<string>("");
+  const [showCertificate, setShowCertificate] = useState(false);
 
   const [windowSize, setWindowSize] = useState({
     width: typeof window !== "undefined" ? window.innerWidth : 0,
@@ -21,9 +26,21 @@ export default function ResultPage() {
   });
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const isPassing = score >= 50;
+  const isPassing = score >= 70; // Set passing score to 70%
 
   useEffect(() => {
+    // Get user name from localStorage or prompt
+    const storedName = localStorage.getItem("userName");
+    if (storedName) {
+      setUserName(storedName);
+    } else {
+      const name =
+        prompt("Please enter your name for the certificate:") ||
+        "Anonymous User";
+      localStorage.setItem("userName", name);
+      setUserName(name);
+    }
+
     const handleResize = () => {
       setWindowSize({
         width: window.innerWidth,
@@ -60,13 +77,17 @@ export default function ResultPage() {
           gravity={0.2}
         />
       )}
+
       <div className="max-w-3xl mx-auto">
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="p-8">
             <div className="text-center">
               <div
-                className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br mb-6
-                ${isPassing ? 'from-green-400 to-green-600' : 'from-red-400 to-red-600'}"
+                className={`inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br mb-6 ${
+                  isPassing
+                    ? "from-green-400 to-green-600"
+                    : "from-red-400 to-red-600"
+                }`}
               >
                 {isPassing ? (
                   <svg
@@ -113,30 +134,34 @@ export default function ResultPage() {
 
               <p className="text-xl mb-8 text-gray-600">
                 {isPassing
-                  ? "Congratulations! You passed the quiz! 🎉"
+                  ? "Congratulations! You&apos;ve passed the quiz! 🎉"
+                  : timeExpired
+                  ? "Time&apos;s up! Keep practicing to improve your speed and accuracy."
                   : "Keep practicing to improve your score."}
               </p>
 
               <div className="space-y-6">
-                <Link
-                  href="/"
-                  className={`inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-lg transition-colors ${
-                    isPassing
-                      ? "bg-green-600 text-white hover:bg-green-700"
-                      : "bg-indigo-600 text-white hover:bg-indigo-700"
-                  }`}
-                >
-                  {isPassing ? "Try Another Topic" : "Try Again"}
-                </Link>
-
                 {isPassing && (
-                  <div className="bg-green-50 rounded-lg p-4 mt-6">
-                    <p className="text-green-800">
-                      Well done! You&apos;ve demonstrated good understanding of{" "}
-                      {topic}.
-                    </p>
-                  </div>
+                  <button
+                    onClick={() => setShowCertificate(true)}
+                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    View Certificate
+                  </button>
                 )}
+
+                <div className="flex justify-center mt-4">
+                  <Link
+                    href="/"
+                    className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md ${
+                      isPassing
+                        ? "text-indigo-600 bg-indigo-100 hover:bg-indigo-200"
+                        : "text-white bg-indigo-600 hover:bg-indigo-700"
+                    }`}
+                  >
+                    {isPassing ? "Try Another Topic" : "Try Again"}
+                  </Link>
+                </div>
 
                 {!isPassing && (
                   <div className="mt-8 text-left">
@@ -184,46 +209,6 @@ export default function ResultPage() {
                           Practice with more examples
                         </p>
                       </div>
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                          <svg
-                            className="h-6 w-6 text-indigo-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </div>
-                        <p className="ml-3 text-gray-600">
-                          Take notes on areas where you&apos;re unsure
-                        </p>
-                      </div>
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                          <svg
-                            className="h-6 w-6 text-indigo-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                            />
-                          </svg>
-                        </div>
-                        <p className="ml-3 text-gray-600">
-                          Consider using additional learning resources
-                        </p>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -232,6 +217,24 @@ export default function ResultPage() {
           </div>
         </div>
       </div>
+
+      {/* Certificate Modal */}
+      <Modal
+        isOpen={showCertificate}
+        onClose={() => setShowCertificate(false)}
+        title="Your Certificate"
+      >
+        <Certificate
+          userName={userName}
+          topic={topic}
+          score={score}
+          date={new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        />
+      </Modal>
     </div>
   );
 }

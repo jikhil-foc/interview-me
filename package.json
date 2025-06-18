@@ -11,6 +11,9 @@
   "dependencies": {
     "@langchain/core": "^0.3.58",
     "@langchain/google-genai": "^0.2.11",
+    "@types/html2canvas": "^1.0.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
     "langchain": "^0.3.28",
     "next": "15.3.3",
     "react": "^19.0.0",
