@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -150,7 +150,7 @@ const LoadingSkeleton = () => {
   );
 };
 
-export default function QuestionsPage() {
+function Quiz() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const topic = searchParams.get("topic");
@@ -164,6 +164,14 @@ export default function QuestionsPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(QUIZ_TIME_SECONDS);
   const shouldAutoSubmit = useRef(false);
+
+  const calculateScore = () => {
+    const correctAnswers = questions.reduce((count, question, index) => {
+      return count + (selectedAnswers[index] === question.answer ? 1 : 0);
+    }, 0);
+    const percentage = Math.round((correctAnswers / questions.length) * 100);
+    return percentage;
+  };
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -227,7 +235,7 @@ export default function QuestionsPage() {
         )}&timeExpired=true`
       );
     }
-  }, [timeRemaining, topic]);
+  }, [timeRemaining, topic, router, calculateScore]);
 
   useEffect(() => {
     // Check if all questions have been answered
@@ -247,14 +255,6 @@ export default function QuestionsPage() {
       newAnswers[questionIndex] = answerIndex;
       return newAnswers;
     });
-  };
-
-  const calculateScore = () => {
-    const correctAnswers = questions.reduce((count, question, index) => {
-      return count + (selectedAnswers[index] === question.answer ? 1 : 0);
-    }, 0);
-    const percentage = Math.round((correctAnswers / questions.length) * 100);
-    return percentage;
   };
 
   const handleSubmit = () => {
@@ -474,5 +474,13 @@ export default function QuestionsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function QuestionsPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <Quiz />
+    </Suspense>
   );
 }
